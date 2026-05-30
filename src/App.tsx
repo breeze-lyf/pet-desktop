@@ -46,7 +46,7 @@ export default function App() {
           <section className="panel">
             <p className="eyebrow">桌面陪伴</p>
             <h1>{companion.profile.name} 会提醒你休息</h1>
-            <p className="muted">现在先从桌面窗口开始，后续可以升级成悬浮宠物和屏幕角落待机。</p>
+            <p className="muted">生成完卡通形象后，{companion.profile.name}会在屏幕角落陪伴你专注。</p>
           </section>
           <FocusControls
             minutes={minutes}

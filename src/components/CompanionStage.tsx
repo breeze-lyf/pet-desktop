@@ -22,9 +22,14 @@ export function CompanionStage({ petName, portraitDataUrl, mood }: CompanionStag
       </div>
       <div className="pet-orbit">
         <img className="pet-portrait" src={portraitDataUrl} alt={`${petName} 的陪伴头像`} />
+        <div className="pet-name-badge">
+          <div className="dot-status" />
+          <strong>{petName}</strong>
+          <span>{moodText[mood]}</span>
+        </div>
       </div>
       <p className="pet-message">
-        {mood === "reminding" ? "已经陪你很久啦，休息一下吧。" : "我在这里，慢慢来。"}
+        {mood === "reminding" ? "已经陪你很久啦，休息一下吧。" : "我在这里，慢慢来。✨"}
       </p>
     </section>
   );

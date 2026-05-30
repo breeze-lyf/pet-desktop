@@ -1,0 +1,366 @@
+:root {
+  color: #182230;
+  background: #f4f7fb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.centered-shell {
+  display: grid;
+  place-items: center;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.side-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.panel {
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.08);
+}
+
+.onboarding-panel {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+.muted {
+  color: #667085;
+  line-height: 1.55;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #344054;
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 12px;
+  color: #182230;
+}
+
+.upload-box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  border: 1px dashed #98a2b3;
+  border-radius: 8px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.upload-box input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.upload-box span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #475467;
+  font-weight: 700;
+}
+
+.upload-box img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+}
+
+.form-error {
+  color: #b42318;
+  margin: 0;
+}
+
+.primary-button,
+.secondary-button,
+.chip,
+.icon-button,
+.activity-button {
+  border: 0;
+  border-radius: 8px;
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  font-weight: 800;
+}
+
+.primary-button {
+  color: #ffffff;
+  background: #1d4ed8;
+}
+
+.secondary-button {
+  color: #344054;
+  background: #eef2f7;
+}
+
+.companion-stage {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.34), transparent 34%),
+    linear-gradient(180deg, #f9fbff, #e8eef7);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.companion-status {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 12px 14px;
+}
+
+.companion-status span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.pet-orbit {
+  width: min(46vw, 420px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.pet-portrait {
+  width: 72%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 46%;
+  border: 8px solid #ffffff;
+  box-shadow: 0 20px 60px rgba(16, 24, 40, 0.2);
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.mood-reminding .pet-portrait {
+  animation: remind 1.4s ease-in-out infinite;
+}
+
+.pet-message {
+  position: absolute;
+  bottom: 24px;
+  max-width: 420px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px 16px;
+  color: #344054;
+}
+
+.timer-display {
+  font-size: 54px;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: #101828;
+}
+
+.preset-row,
+.control-row,
+.sound-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 12px;
+  color: #344054;
+  background: #eef2f7;
+}
+
+.chip.selected {
+  color: #ffffff;
+  background: #1d4ed8;
+}
+
+.focus-controls {
+  display: grid;
+  gap: 18px;
+}
+
+.rest-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.rest-card {
+  position: relative;
+  width: min(720px, 100%);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.22);
+}
+
+.close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: #344054;
+  background: #eef2f7;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.activity-button {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  padding: 14px;
+  color: #344054;
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+}
+
+.activity-button strong {
+  color: #182230;
+}
+
+.activity-button span {
+  color: #667085;
+  line-height: 1.45;
+}
+
+.activity-button em {
+  color: #1d4ed8;
+  font-style: normal;
+  font-weight: 800;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.025);
+  }
+}
+
+@keyframes remind {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.04);
+  }
+  50% {
+    transform: translateY(-14px) scale(1.08);
+  }
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    padding: 14px;
+  }
+
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .companion-stage {
+    min-height: 480px;
+  }
+
+  .pet-orbit {
+    width: min(78vw, 360px);
+  }
+
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+}

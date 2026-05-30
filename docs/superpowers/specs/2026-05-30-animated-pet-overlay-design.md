@@ -15,10 +15,11 @@
 
 ### 3D 模型生成
 
-- 调用 Meshy API `POST /v2/image-to-3d` 提交任务，获得 `task_id`
-- 主进程每 3 秒轮询 `GET /v2/image-to-3d/{task_id}`，直到 `status === 'SUCCEEDED'`
-- 下载 `model_urls.glb`，保存到 Electron `userData` 目录，返回本地文件路径
-- `MESHY_API_KEY` 从 `process.env` 读取，只存在主进程，渲染进程通过 IPC `generate-3d-model` 触发
+- 调用腾讯云混元生3D API（`tencentcloud-sdk-nodejs-ai3d`）
+- `SubmitHunyuanTo3DProJob` 提交图片，获得 `JobId`
+- 主进程每 5 秒轮询 `QueryHunyuanTo3DProJob`，直到 `Status === 'DONE'`
+- 从 `ResultFile3Ds` 中取 `Type === 'GLB'` 的下载 URL，保存到 Electron `userData` 目录
+- `TENCENTCLOUD_SECRET_ID` / `TENCENTCLOUD_SECRET_KEY` 从 `process.env` 读取，只存在主进程
 
 ### 进度 UI
 

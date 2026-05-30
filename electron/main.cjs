@@ -1,4 +1,4 @@
-require("dotenv").config({ path: require("node:path").join(__dirname, "../.env") });
+require("dotenv").config({ path: require("node:path").join(process.cwd(), ".env") });
 const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("node:path");
 const https = require("node:https");
@@ -91,7 +91,14 @@ function createWindow() {
 
 function registerIpcHandlers() {
   ipcMain.handle("generate-3d-model", async (_event, photoBase64) => {
-    return generateCartoonPortrait(photoBase64);
+    try {
+      const result = await generateCartoonPortrait(photoBase64);
+      console.log("[generateCartoonPortrait] success:", result);
+      return result;
+    } catch (err) {
+      console.error("[generateCartoonPortrait] error:", err.message);
+      throw err;
+    }
   });
 
   ipcMain.on("timer-state-changed", (event, status) => {

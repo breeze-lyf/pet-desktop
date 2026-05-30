@@ -47,10 +47,8 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
     } catch (err) {
       console.error("[3D generation failed]", err);
       clearInterval(interval);
-      setError("3D 生成失败，使用平面模式");
+      setError("AI 生成失败，请检查 ARK_API_KEY 是否正确配置");
       setStage("form");
-      const companion = createCompanionFromPhoto({ name, photoDataUrl });
-      onCreate(companion);
     }
   }
 

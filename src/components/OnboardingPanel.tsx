@@ -3,14 +3,26 @@ import { Camera } from "lucide-react";
 import { CompanionPet } from "../domain/pet";
 import { createCompanionFromPhoto, readFileAsDataUrl } from "../lib/petGeneration";
 
+declare global {
+  interface Window {
+    electronAPI?: {
+      generateModel: (photoBase64: string) => Promise<string>;
+    };
+  }
+}
+
 interface OnboardingPanelProps {
   onCreate: (companion: CompanionPet) => void;
 }
+
+type Stage = "form" | "generating";
 
 export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
   const [name, setName] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState("");
   const [error, setError] = useState("");
+  const [stage, setStage] = useState<Stage>("form");
+  const [progress, setProgress] = useState(0);
 
   async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -19,20 +31,48 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
     setPhotoDataUrl(await readFileAsDataUrl(file));
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!name.trim()) { setError("先给宠物起个名字"); return; }
+    if (!photoDataUrl) { setError("请上传一张清晰的宠物照片"); return; }
 
-    if (!name.trim()) {
-      setError("先给宠物起个名字");
-      return;
+    setStage("generating");
+    setProgress(0);
+
+    const interval = setInterval(() => {
+      setProgress((p) => (p < 90 ? p + 1 : p));
+    }, 333);
+
+    try {
+      let modelPath: string | undefined;
+      if (window.electronAPI) {
+        modelPath = await window.electronAPI.generateModel(photoDataUrl);
+      }
+      clearInterval(interval);
+      setProgress(100);
+      const companion = createCompanionFromPhoto({ name, photoDataUrl });
+      onCreate({ ...companion, modelPath });
+    } catch {
+      clearInterval(interval);
+      setError("3D 生成失败，使用平面模式");
+      setStage("form");
+      const companion = createCompanionFromPhoto({ name, photoDataUrl });
+      onCreate(companion);
     }
+  }
 
-    if (!photoDataUrl) {
-      setError("请上传一张清晰的宠物照片");
-      return;
-    }
-
-    onCreate(createCompanionFromPhoto({ name, photoDataUrl }));
+  if (stage === "generating") {
+    return (
+      <div className="panel onboarding-panel">
+        <p className="eyebrow">正在生成 3D 宠物模型</p>
+        <h2>稍等一下...</h2>
+        <p className="muted">通常需要 30 秒到 2 分钟</p>
+        <div style={{ margin: "16px 0", background: "#eee", borderRadius: 8, height: 8 }}>
+          <div style={{ width: `${progress}%`, background: "#4ecca3", height: "100%", borderRadius: 8, transition: "width 0.3s" }} />
+        </div>
+        <p className="muted">{progress}%</p>
+      </div>
+    );
   }
 
   return (
@@ -40,12 +80,17 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
       <div>
         <p className="eyebrow">第一步</p>
         <h2>创建你的陪伴宠物</h2>
-        <p className="muted">先上传一张宠物照片。MVP 会把它作为轻动态陪伴头像。</p>
+        <p className="muted">上传宠物照片，AI 会生成专属 3D 模型。</p>
       </div>
 
-      <label className="field">
+      <label className="field" htmlFor="pet-name">
         <span>宠物名字</span>
-        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：奶盖" />
+        <input
+          id="pet-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="例如：奶盖"
+        />
       </label>
 
       <label className="upload-box">
@@ -53,10 +98,7 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
         {photoDataUrl ? (
           <img src={photoDataUrl} alt="宠物预览" />
         ) : (
-          <span>
-            <Camera size={22} />
-            上传宠物照片
-          </span>
+          <span><Camera size={22} />上传宠物照片</span>
         )}
       </label>
 

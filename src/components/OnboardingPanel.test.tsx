@@ -7,7 +7,7 @@ describe("OnboardingPanel", () => {
     const onCreate = vi.fn();
     render(<OnboardingPanel onCreate={onCreate} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "生成陪伴宠物" }));
+    fireEvent.click(screen.getByRole("button", { name: "✨ 生成陪伴宠物" }));
 
     expect(screen.getByText("先给宠物起个名字")).toBeInTheDocument();
     expect(onCreate).not.toHaveBeenCalled();
@@ -18,7 +18,7 @@ describe("OnboardingPanel", () => {
     const { getByRole } = render(<OnboardingPanel onCreate={onCreate} />);
 
     fireEvent.change(getByRole("textbox"), { target: { value: "奶盖" } });
-    fireEvent.click(getByRole("button", { name: "生成陪伴宠物" }));
+    fireEvent.click(getByRole("button", { name: "✨ 生成陪伴宠物" }));
 
     expect(screen.getByText("请上传一张清晰的宠物照片")).toBeInTheDocument();
     expect(onCreate).not.toHaveBeenCalled();

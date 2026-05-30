@@ -8,12 +8,6 @@ export function formatRemainingTime(seconds: number) {
   return `${minutes}:${restSeconds}`;
 }
 
-declare global {
-  interface Window {
-    electronAPI?: { syncTimerState: (status: string) => void };
-  }
-}
-
 function syncStatus(status: FocusTimerStatus) {
   window.electronAPI?.syncTimerState(status);
 }

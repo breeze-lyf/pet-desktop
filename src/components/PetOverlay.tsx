@@ -4,15 +4,6 @@ import { CompanionMood, CompanionPet } from "../domain/pet";
 import { readJson } from "../lib/storage";
 import { PetModel } from "./PetModel";
 
-declare global {
-  interface Window {
-    electronAPI: {
-      onTimerStateChange: (cb: (status: string) => void) => () => void;
-      movePetWindow: (x: number, y: number) => void;
-    };
-  }
-}
-
 function statusToMood(status: string): CompanionMood {
   if (status === "running") return "focus";
   if (status === "reminding") return "reminding";

@@ -3,14 +3,6 @@ import { Camera } from "lucide-react";
 import { CompanionPet } from "../domain/pet";
 import { createCompanionFromPhoto, readFileAsDataUrl } from "../lib/petGeneration";
 
-declare global {
-  interface Window {
-    electronAPI?: {
-      generateModel: (photoBase64: string) => Promise<string>;
-    };
-  }
-}
-
 interface OnboardingPanelProps {
   onCreate: (companion: CompanionPet) => void;
 }

@@ -2,79 +2,66 @@ const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("node:path");
 const https = require("node:https");
 const fs = require("node:fs");
+const { ai3d } = require("tencentcloud-sdk-nodejs-ai3d");
 
-function httpsGet(url, headers) {
+function createHunyuanClient() {
+  const secretId = process.env.TENCENTCLOUD_SECRET_ID;
+  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
+  if (!secretId || !secretKey) throw new Error("TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY not set");
+  return new ai3d.v20250513.Client({
+    credential: { secretId, secretKey },
+    region: "ap-guangzhou",
+  });
+}
+
+async function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers }, (res) => {
+    const MAX_BYTES = 50 * 1024 * 1024;
+    https.get(url, (res) => {
+      if (res.statusCode >= 400) {
+        reject(new Error(`GLB download failed with status ${res.statusCode}`));
+        res.resume();
+        return;
+      }
       const chunks = [];
-      res.on("data", (c) => chunks.push(c));
-      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+      let total = 0;
+      res.on("data", (c) => {
+        total += c.length;
+        if (total > MAX_BYTES) { reject(new Error("GLB file exceeds 50 MB limit")); res.destroy(); return; }
+        chunks.push(c);
+      });
+      res.on("end", () => fs.promises.writeFile(dest, Buffer.concat(chunks)).then(resolve).catch(reject));
     }).on("error", reject);
   });
 }
 
-function httpsPost(url, headers, body) {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
-    const urlObj = new URL(url);
-    const req = https.request({
-      hostname: urlObj.hostname,
-      path: urlObj.pathname + urlObj.search,
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) }
-    }, (res) => {
-      const chunks = [];
-      res.on("data", (c) => chunks.push(c));
-      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
-    });
-    req.on("error", reject);
-    req.write(data);
-    req.end();
+async function generateHunyuanModel(photoBase64) {
+  const client = createHunyuanClient();
+
+  const imageBase64 = photoBase64.startsWith("data:")
+    ? photoBase64.replace(/^data:[^;]+;base64,/, "")
+    : photoBase64;
+
+  const { JobId } = await client.SubmitHunyuanTo3DProJob({
+    ImageBase64: imageBase64,
+    Model: "3.0",
+    EnablePBR: false,
   });
-}
 
-async function generateMeshyModel(photoBase64) {
-  const apiKey = process.env.MESHY_API_KEY;
-  if (!apiKey) throw new Error("MESHY_API_KEY not set");
-
-  const headers = { Authorization: `Bearer ${apiKey}` };
-
-  // Ensure image_url is a proper data URI
-  const imageUrl = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
-
-  // Submit task
-  const submitRes = await httpsPost(
-    "https://api.meshy.ai/v2/image-to-3d",
-    headers,
-    { image_url: imageUrl, enable_pbr: false }
-  );
-  const submitData = JSON.parse(submitRes.body.toString());
-  if (!submitData.result) throw new Error(`Meshy submit failed: ${submitRes.body}`);
-  const taskId = submitData.result;
-
-  // Poll until SUCCEEDED or timeout
   const deadline = Date.now() + 3 * 60 * 1000;
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 3000));
-    const pollRes = await httpsGet(`https://api.meshy.ai/v2/image-to-3d/${taskId}`, headers);
-    if (pollRes.status >= 400) throw new Error(`Meshy poll failed with status ${pollRes.status}`);
-    const pollData = JSON.parse(pollRes.body.toString());
-    if (pollData.status === "SUCCEEDED") {
-      const glbUrl = pollData.model_urls?.glb;
-      if (!glbUrl) throw new Error("No GLB URL in response");
-
-      // Download GLB
-      const dlRes = await httpsGet(glbUrl, {});
-      if (dlRes.status >= 400) throw new Error(`GLB download failed with status ${dlRes.status}`);
-      const dest = path.join(app.getPath("userData"), `pet-${taskId}.glb`);
-      await fs.promises.writeFile(dest, dlRes.body);
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await client.QueryHunyuanTo3DProJob({ JobId });
+    if (res.Status === "DONE") {
+      const glb = (res.ResultFile3Ds || []).find((f) => f.Type === "GLB");
+      if (!glb?.Url) throw new Error("Hunyuan3D returned no GLB URL");
+      const dest = path.join(app.getPath("userData"), `pet-${JobId}.glb`);
+      await downloadFile(glb.Url, dest);
       return dest;
     }
-    if (pollData.status === "FAILED" || pollData.status === "EXPIRED") {
-      throw new Error(`Meshy task ${pollData.status}`);
-    }
+    if (res.Status === "FAIL") throw new Error(`Hunyuan3D failed: ${res.ErrorMessage || "unknown error"}`);
   }
-  throw new Error("Meshy generation timed out");
+  throw new Error("Hunyuan3D generation timed out");
 }
 
 let overlayWindow = null;
@@ -113,7 +100,7 @@ function createWindow() {
 
 function registerIpcHandlers() {
   ipcMain.handle("generate-3d-model", async (_event, photoBase64) => {
-    return generateMeshyModel(photoBase64);
+    return generateHunyuanModel(photoBase64);
   });
 
   ipcMain.on("timer-state-changed", (event, status) => {

@@ -9,6 +9,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("timer-state-update", handler);
   },
   movePetWindow: (x, y) => ipcRenderer.send("move-pet-window", x, y),
-  showPetOverlay: (modelPath) => ipcRenderer.send("show-pet-overlay", modelPath),
+  showPetOverlay: (cartoonPath) => ipcRenderer.send("show-pet-overlay", cartoonPath),
   platform: process.platform
 });

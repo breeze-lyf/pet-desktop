@@ -2,16 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { PetOverlay } from "./PetOverlay";
 
-vi.mock("@react-three/fiber", () => ({
-  Canvas: ({ children }: { children: React.ReactNode }) => <div data-testid="canvas">{children}</div>,
-  useFrame: vi.fn()
-}));
-vi.mock("@react-three/drei", () => ({
-  useGLTF: vi.fn(() => ({ scene: { clone: () => ({}) } })),
-  OrbitControls: () => null
-}));
-vi.mock("./PetModel", () => ({ PetModel: () => <div data-testid="pet-model" /> }));
-
 beforeEach(() => {
   (window as any).electronAPI = {
     onTimerStateChange: vi.fn(() => () => {}),
@@ -20,15 +10,29 @@ beforeEach(() => {
 });
 
 describe("PetOverlay", () => {
-  it("renders canvas when modelPath is provided via localStorage", () => {
+  it("renders pet image when cartoonPath is provided via localStorage", () => {
     localStorage.setItem("pet-companion", JSON.stringify({
       profile: { id: "1", name: "奶盖", photoDataUrl: "", createdAt: "" },
-      portraitDataUrl: "",
+      portraitDataUrl: "data:image/png;base64,abc",
       mood: "idle",
-      modelPath: "/fake/pet.glb"
+      cartoonPath: "/fake/cartoon.png"
     }));
-    const { getByTestId } = render(<PetOverlay />);
-    expect(getByTestId("canvas")).toBeTruthy();
+    const { container } = render(<PetOverlay />);
+    const img = container.querySelector("img");
+    expect(img).toBeTruthy();
+    expect(img?.src).toContain("cartoon.png");
+  });
+
+  it("falls back to portraitDataUrl when no cartoonPath", () => {
+    localStorage.setItem("pet-companion", JSON.stringify({
+      profile: { id: "1", name: "奶盖", photoDataUrl: "", createdAt: "" },
+      portraitDataUrl: "data:image/png;base64,abc",
+      mood: "idle"
+    }));
+    const { container } = render(<PetOverlay />);
+    const img = container.querySelector("img");
+    expect(img).toBeTruthy();
+    expect(img?.src).toContain("base64,abc");
   });
 
   it("renders nothing when no companion in localStorage", () => {

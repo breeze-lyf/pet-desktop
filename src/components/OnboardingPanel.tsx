@@ -36,15 +36,16 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
     }, 333);
 
     try {
-      let modelPath: string | undefined;
+      let cartoonPath: string | undefined;
       if (window.electronAPI) {
-        modelPath = await window.electronAPI.generateModel(photoDataUrl);
+        cartoonPath = await window.electronAPI.generateModel(photoDataUrl);
       }
       clearInterval(interval);
       setProgress(100);
       const companion = createCompanionFromPhoto({ name, photoDataUrl });
-      onCreate({ ...companion, modelPath });
-    } catch {
+      onCreate({ ...companion, cartoonPath });
+    } catch (err) {
+      console.error("[3D generation failed]", err);
       clearInterval(interval);
       setError("3D 生成失败，使用平面模式");
       setStage("form");

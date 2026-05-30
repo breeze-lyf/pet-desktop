@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
 import { CompanionMood, CompanionPet } from "../domain/pet";
 import { readJson } from "../lib/storage";
-import { PetModel } from "./PetModel";
 
 function statusToMood(status: string): CompanionMood {
   if (status === "running") return "focus";
@@ -11,11 +9,21 @@ function statusToMood(status: string): CompanionMood {
   return "idle";
 }
 
+const moodAnimation: Record<CompanionMood, string> = {
+  idle: "pet-float",
+  focus: "pet-breathe",
+  reminding: "pet-bounce",
+  resting: "pet-sway",
+};
+
 export function PetOverlay() {
   const companion = readJson<CompanionPet | null>("pet-companion", null);
-  const urlModelPath = new URLSearchParams(window.location.search).get("modelPath") || undefined;
-  const modelPath = companion?.modelPath ?? urlModelPath;
+  const urlCartoonPath = new URLSearchParams(window.location.search).get("cartoonPath") || undefined;
+  const cartoonPath = companion?.cartoonPath ?? urlCartoonPath;
+  const portraitPath = companion?.portraitDataUrl;
+
   const [mood, setMood] = useState<CompanionMood>("idle");
+  const [jumped, setJumped] = useState(false);
   const dragStart = useRef<{ x: number; y: number; wx: number; wy: number } | null>(null);
 
   useEffect(() => {
@@ -26,10 +34,6 @@ export function PetOverlay() {
     return unsub;
   }, []);
 
-  function handleMouseDown(e: React.MouseEvent) {
-    dragStart.current = { x: e.screenX, y: e.screenY, wx: window.screenX, wy: window.screenY };
-  }
-
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
       if (!dragStart.current || !window.electronAPI) return;
@@ -37,9 +41,7 @@ export function PetOverlay() {
       const dy = e.screenY - dragStart.current.y;
       window.electronAPI.movePetWindow(dragStart.current.wx + dx, dragStart.current.wy + dy);
     }
-    function onMouseUp() {
-      dragStart.current = null;
-    }
+    function onMouseUp() { dragStart.current = null; }
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => {
@@ -48,22 +50,33 @@ export function PetOverlay() {
     };
   }, []);
 
-  if (!modelPath) return null;
+  function handleClick() {
+    setJumped(true);
+    setTimeout(() => setJumped(false), 600);
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    dragStart.current = { x: e.screenX, y: e.screenY, wx: window.screenX, wy: window.screenY };
+  }
+
+  const imgSrc = cartoonPath ? `file://${cartoonPath}` : portraitPath;
+  if (!imgSrc) return null;
+
+  const animClass = jumped ? "pet-jump" : moodAnimation[mood];
 
   return (
     <div
-      style={{ width: 160, height: 160, cursor: "grab", userSelect: "none" }}
+      style={{ width: 160, height: 160, display: "flex", alignItems: "center", justifyContent: "center", cursor: "grab", userSelect: "none", background: "transparent" }}
       onMouseDown={handleMouseDown}
+      onClick={handleClick}
     >
-      <Canvas camera={{ position: [0, 0, 3], fov: 45 }}>
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-        <PetModel
-          modelPath={modelPath}
-          mood={mood}
-          onClick={() => {}}
-        />
-      </Canvas>
+      <img
+        src={imgSrc}
+        alt="pet"
+        className={`pet-overlay-img ${animClass}`}
+        style={{ width: 130, height: 130, objectFit: "contain", borderRadius: "50%" }}
+        draggable={false}
+      />
     </div>
   );
 }

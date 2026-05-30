@@ -11,5 +11,5 @@ export interface CompanionPet {
   profile: PetProfile;
   portraitDataUrl: string;
   mood: CompanionMood;
-  modelPath?: string;
+  cartoonPath?: string;
 }

@@ -1,33 +1,19 @@
+require("dotenv").config({ path: require("node:path").join(__dirname, "../.env") });
 const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("node:path");
 const https = require("node:https");
 const fs = require("node:fs");
-const { ai3d } = require("tencentcloud-sdk-nodejs-ai3d");
 
-function createHunyuanClient() {
-  const secretId = process.env.TENCENTCLOUD_SECRET_ID;
-  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
-  if (!secretId || !secretKey) throw new Error("TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY not set");
-  return new ai3d.v20250513.Client({
-    credential: { secretId, secretKey },
-    region: "ap-guangzhou",
-  });
-}
-
-async function downloadFile(url, dest) {
+async function downloadToFile(url, dest) {
   return new Promise((resolve, reject) => {
-    const MAX_BYTES = 50 * 1024 * 1024;
+    const MAX_BYTES = 20 * 1024 * 1024;
     https.get(url, (res) => {
-      if (res.statusCode >= 400) {
-        reject(new Error(`GLB download failed with status ${res.statusCode}`));
-        res.resume();
-        return;
-      }
+      if (res.statusCode >= 400) { reject(new Error(`Download failed: ${res.statusCode}`)); res.resume(); return; }
       const chunks = [];
       let total = 0;
       res.on("data", (c) => {
         total += c.length;
-        if (total > MAX_BYTES) { reject(new Error("GLB file exceeds 50 MB limit")); res.destroy(); return; }
+        if (total > MAX_BYTES) { reject(new Error("Image exceeds 20 MB")); res.destroy(); return; }
         chunks.push(c);
       });
       res.on("end", () => fs.promises.writeFile(dest, Buffer.concat(chunks)).then(resolve).catch(reject));
@@ -35,33 +21,38 @@ async function downloadFile(url, dest) {
   });
 }
 
-async function generateHunyuanModel(photoBase64) {
-  const client = createHunyuanClient();
+async function generateCartoonPortrait(photoBase64) {
+  const apiKey = process.env.ARK_API_KEY;
+  if (!apiKey) throw new Error("ARK_API_KEY not set");
 
-  const imageBase64 = photoBase64.startsWith("data:")
-    ? photoBase64.replace(/^data:[^;]+;base64,/, "")
-    : photoBase64;
+  const imageData = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
 
-  const { JobId } = await client.SubmitHunyuanTo3DProJob({
-    ImageBase64: imageBase64,
-    Model: "3.0",
-    EnablePBR: false,
+  const res = await fetch("https://ark.cn-beijing.volces.com/api/v3/images/generations", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "doubao-seededit-3-0-i2i-250628",
+      prompt: "转换为可爱日系卡通贴纸风格，保留宠物脸部特征，背景简洁",
+      image: imageData,
+      response_format: "url",
+      size: "adaptive",
+      guidance_scale: 6,
+      watermark: false,
+    }),
   });
 
-  const deadline = Date.now() + 3 * 60 * 1000;
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 5000));
-    const res = await client.QueryHunyuanTo3DProJob({ JobId });
-    if (res.Status === "DONE") {
-      const glb = (res.ResultFile3Ds || []).find((f) => f.Type === "GLB");
-      if (!glb?.Url) throw new Error("Hunyuan3D returned no GLB URL");
-      const dest = path.join(app.getPath("userData"), `pet-${JobId}.glb`);
-      await downloadFile(glb.Url, dest);
-      return dest;
-    }
-    if (res.Status === "FAIL") throw new Error(`Hunyuan3D failed: ${res.ErrorMessage || "unknown error"}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Ark API error ${res.status}: ${body}`);
   }
-  throw new Error("Hunyuan3D generation timed out");
+
+  const json = await res.json();
+  const imageUrl = json.data?.[0]?.url;
+  if (!imageUrl) throw new Error("No image URL in response");
+
+  const dest = path.join(app.getPath("userData"), `pet-cartoon-${Date.now()}.png`);
+  await downloadToFile(imageUrl, dest);
+  return dest;
 }
 
 let overlayWindow = null;
@@ -100,7 +91,7 @@ function createWindow() {
 
 function registerIpcHandlers() {
   ipcMain.handle("generate-3d-model", async (_event, photoBase64) => {
-    return generateHunyuanModel(photoBase64);
+    return generateCartoonPortrait(photoBase64);
   });
 
   ipcMain.on("timer-state-changed", (event, status) => {
@@ -116,7 +107,7 @@ function registerIpcHandlers() {
     if (win) win.setPosition(Math.round(x), Math.round(y));
   });
 
-  ipcMain.on("show-pet-overlay", (event, modelPath) => {
+  ipcMain.on("show-pet-overlay", (event, cartoonPath) => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.show();
       return;
@@ -140,12 +131,12 @@ function registerIpcHandlers() {
       }
     });
 
-    const encodedPath = modelPath ? `?modelPath=${encodeURIComponent(modelPath)}` : "";
+    const encodedPath = cartoonPath ? `?cartoonPath=${encodeURIComponent(cartoonPath)}` : "";
     if (process.env.VITE_DEV_SERVER_URL) {
       overlayWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}overlay.html${encodedPath}`);
     } else {
       overlayWindow.loadFile(path.join(__dirname, "../dist/overlay.html"), {
-        query: modelPath ? { modelPath } : undefined
+        query: cartoonPath ? { cartoonPath } : undefined
       });
     }
 

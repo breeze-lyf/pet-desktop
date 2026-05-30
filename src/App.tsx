@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { CompanionMood, CompanionPet } from "./domain/pet";
 import { getDefaultTimerMinutes, restActivities } from "./domain/rest";
 import { CompanionStage } from "./components/CompanionStage";
@@ -19,6 +19,12 @@ export default function App() {
     if (timer.status === "resting") return "resting";
     return "idle";
   }, [timer.status]);
+
+  useEffect(() => {
+    if (companion && (window as any).electronAPI?.showPetOverlay) {
+      (window as any).electronAPI.showPetOverlay();
+    }
+  }, [companion]);
 
   if (!companion) {
     return (

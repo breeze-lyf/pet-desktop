@@ -1,58 +1,74 @@
-# 动态宠物 + 悬浮窗口设计
+# 动态 3D 宠物 + 悬浮窗口设计
 
 **日期**：2026-05-30  
-**范围**：照片去背处理、2.5D 动画系统、Electron 悬浮窗口、跨窗口状态同步
+**范围**：Meshy AI 生成 3D 模型、Three.js 渲染与程序化动画、Electron 悬浮窗口、跨窗口状态同步
 
 ---
 
 ## 目标
 
-用户上传宠物照片后，经 AI 去背处理生成透明 PNG，配合丰富的 CSS 动画系统让宠物"活起来"。同时新增一个透明圆形悬浮窗口贴在屏幕角落，始终可见，与主窗口计时器状态实时同步。
+用户上传宠物照片后，调用 Meshy AI 生成真实 3D GLB 模型，用 Three.js 在 Electron 透明悬浮窗口中渲染，根据专注计时器状态实时切换动画行为，让宠物作为桌面常驻陪伴。
 
 ---
 
 ## 一、图像处理流程
 
-### 去背
+### 3D 模型生成
 
-- 调用 Remove.bg API（`api.remove.bg/v1.0/removebg`）
-- 由 Electron **主进程**发起 HTTP 请求，API key 从 `process.env.REMOVE_BG_API_KEY` 读取
-- 渲染进程通过 IPC handler `remove-background` 触发，传入原图 base64，返回透明 PNG base64
-- API key 不暴露到任何渲染进程代码
+- 调用 Meshy API `POST /v2/image-to-3d` 提交任务，获得 `task_id`
+- 主进程每 3 秒轮询 `GET /v2/image-to-3d/{task_id}`，直到 `status === 'SUCCEEDED'`
+- 下载 `model_urls.glb`，保存到 Electron `userData` 目录，返回本地文件路径
+- `MESHY_API_KEY` 从 `process.env` 读取，只存在主进程，渲染进程通过 IPC `generate-3d-model` 触发
+
+### 进度 UI
+
+- onboarding 提交后进入等待页面，显示假进度条（30s 到 90%，完成跳 100%）
+- 提示文案："通常需要 30 秒到 2 分钟"
 
 ### 降级策略
 
-Remove.bg 请求失败时，OnboardingPanel 使用原图 + 圆形 `clip-path` 裁剪作为兜底，不阻塞 onboarding 流程。界面提示"去背失败，使用原图"。
+超时（3 分钟）或 API 失败时，降级到 Remove.bg 去背 + CSS 动画方案，提示用户"3D 生成失败，使用平面模式"。不阻塞 onboarding 流程。
 
-### 数据影响
+### 数据变更
 
-`CompanionPet.portraitDataUrl` 存储去背后的透明 PNG base64（或降级时的原图）。`profile.photoDataUrl` 保留原始照片不变。
+`CompanionPet` 新增字段 `modelPath: string`（本地 GLB 文件绝对路径）。`portraitDataUrl` 保留，用于降级和缩略图展示。
 
 ---
 
-## 二、动画系统
+## 二、3D 渲染与动画系统
 
-### 状态动画
+### 技术栈
 
-全部使用 CSS keyframes，无 JS 动画库。`CompanionStage` 根据 `mood` prop 切换 className。
+新增依赖：`three`、`@react-three/fiber`、`@react-three/drei`
 
-| mood | 动画名 | 描述 |
-|------|--------|------|
-| `idle` | `breathing` | 缓慢缩放 0.97→1.03，2.5s 循环 |
-| `focus` | `floating` | 上下浮动 ±4px，3s 循环 |
-| `reminding` | `bouncing` | 快速弹跳，0.6s 循环 |
-| `resting` | `swaying` | 左右摇摆 ±6deg，2s 循环 |
+### 程序化动画
 
-### 交互动画
+Meshy 生成的模型不带骨骼动画，使用 `useFrame` 驱动模型整体变换：
 
-- **点击**：触发 `jump` 动画（跳起落下，播放一次），通过临时添加/移除 class 实现
-- **hover**：scale 1.08 + tooltip 渐显（CSS transition）
-- **随机小动作**：`useRandomPetAction` hook，每隔 25~40s 随机触发 `headtilt` class，持续 1s 后移除
+| mood | 动画 | 实现 |
+|------|------|------|
+| `idle` | 缓慢上下浮动 + 轻微自转 | `position.y` 正弦 + `rotation.y` 递增 |
+| `focus` | 静止，偶尔小幅点头 | 低频随机 `rotation.x` 微扰 |
+| `reminding` | 快速跳动 | `position.y` 快速弹跳 |
+| `resting` | 左右摇摆 | `rotation.z` 正弦摆动 |
+
+**点击交互**：点击模型触发一次性 `jump`（`position.y` 快速上抛后落下）
+
+### 渲染组件结构
+
+```tsx
+<Canvas>
+  <ambientLight />
+  <directionalLight position={[5, 5, 5]} />
+  <PetModel modelPath={modelPath} mood={mood} onClick={handleJump} />
+  <OrbitControls enabled={false} />  {/* 预留，后续开启交互 */}
+</Canvas>
+```
 
 ### 新增文件
 
-- `src/styles/animations.css`：所有 keyframe 定义
-- `src/hooks/useRandomPetAction.ts`：随机动作 hook
+- `src/components/PetModel.tsx`：GLB 加载 + `useFrame` 动画逻辑
+- `src/components/PetOverlay.tsx`：悬浮窗口根组件，包含 Canvas
 
 ---
 
@@ -62,8 +78,8 @@ Remove.bg 请求失败时，OnboardingPanel 使用原图 + 圆形 `clip-path` �
 
 ```js
 {
-  width: 96,
-  height: 96,
+  width: 160,
+  height: 160,
   transparent: true,
   frame: false,
   alwaysOnTop: true,
@@ -73,22 +89,22 @@ Remove.bg 请求失败时，OnboardingPanel 使用原图 + 圆形 `clip-path` �
 }
 ```
 
-默认位置：屏幕右下角（`screenWidth - 112, screenHeight - 112`）。
+默认位置：屏幕右下角（`screenWidth - 176, screenHeight - 176`）。
 
 ### 双窗口架构
 
-- **主窗口**（现有）：完整的专注计时器 UI
-- **悬浮窗口**：加载 `/overlay` 路由，仅渲染 `PetOverlay` 组件
+- **主窗口**（现有）：完整的专注计时器 UI，加载 `index.html`
+- **悬浮窗口**：加载 `overlay.html`，仅渲染 `PetOverlay` 组件
 
-主窗口 ready 后，通过 IPC `show-pet-overlay` 通知主进程创建悬浮窗口。主窗口关闭时悬浮窗同步关闭。
+主窗口 ready 后发送 IPC `show-pet-overlay` 创建悬浮窗口。主窗口关闭时悬浮窗同步关闭。
 
 ### 拖拽
 
-渲染进程监听 `mousedown` + `mousemove`，通过 `window.electronAPI.movePetWindow(x, y)` 调用主进程 `win.setPosition()`。
+渲染进程监听 `mousedown` + `mousemove`，通过 `electronAPI.movePetWindow(x, y)` 调用主进程 `win.setPosition()`。
 
-### 前端路由
+### 前端入口
 
-Vite 构建新增 `/overlay` 入口（`src/overlay.tsx`），独立 HTML 文件 `overlay.html`，避免加载主 App 的全部依赖。
+Vite 构建新增 `overlay.html` + `src/overlay.tsx` 作为独立入口，不加载主 App 依赖。
 
 ---
 
@@ -99,15 +115,19 @@ Vite 构建新增 `/overlay` 入口（`src/overlay.tsx`），独立 HTML 文件 
 ```
 主窗口 useFocusTimer
   → status 变化时 electronAPI.syncTimerState(status)
-  → 主进程收到，广播给悬浮窗口
-  → PetOverlay 的 onTimerStateChange 回调更新本地 mood state
+  → 主进程广播 timer-state-update 给所有窗口
+  → PetOverlay onTimerStateChange 回调更新本地 mood
+  → PetModel useFrame 切换动画行为
 ```
 
 ### preload.cjs 新增 API
 
 ```js
+generateModel: (photoBase64) => ipcRenderer.invoke('generate-3d-model', photoBase64)
 syncTimerState: (status) => ipcRenderer.send('timer-state-changed', status)
 onTimerStateChange: (cb) => ipcRenderer.on('timer-state-update', (_, status) => cb(status))
+movePetWindow: (x, y) => ipcRenderer.send('move-pet-window', x, y)
+showPetOverlay: () => ipcRenderer.send('show-pet-overlay')
 ```
 
 ---
@@ -116,23 +136,23 @@ onTimerStateChange: (cb) => ipcRenderer.on('timer-state-update', (_, status) => 
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `electron/main.cjs` | 修改 | 新增 `remove-background` IPC handler，悬浮窗口创建逻辑，状态广播 |
-| `electron/preload.cjs` | 修改 | 新增 `removeBackground`、`syncTimerState`、`onTimerStateChange`、`movePetWindow` |
+| `electron/main.cjs` | 修改 | 新增 `generate-3d-model` IPC handler（Meshy 轮询）、悬浮窗口创建、状态广播、窗口拖拽 |
+| `electron/preload.cjs` | 修改 | 新增 `generateModel`、`syncTimerState`、`onTimerStateChange`、`movePetWindow`、`showPetOverlay` |
 | `overlay.html` | 新增 | 悬浮窗口 HTML 入口 |
 | `src/overlay.tsx` | 新增 | 悬浮窗口 React 入口 |
-| `src/components/PetOverlay.tsx` | 新增 | 悬浮窗口宠物组件 |
-| `src/hooks/useRandomPetAction.ts` | 新增 | 随机小动作 hook |
-| `src/styles/animations.css` | 新增 | 所有 keyframe 定义 |
-| `src/lib/petGeneration.ts` | 修改 | 新增 `removeBackground()` 调用逻辑 |
-| `src/components/OnboardingPanel.tsx` | 修改 | 接入去背流程，处理降级 |
-| `src/components/CompanionStage.tsx` | 修改 | 动画 className 切换，点击/hover 交互 |
-| `src/hooks/useFocusTimer.ts` | 修改 | status 变化时调用 syncTimerState |
+| `src/components/PetOverlay.tsx` | 新增 | 悬浮窗口根组件，Canvas 容器，状态订阅 |
+| `src/components/PetModel.tsx` | 新增 | GLB 加载 + useFrame 程序化动画 |
+| `src/components/OnboardingPanel.tsx` | 修改 | 接入 `generateModel` IPC，进度等待 UI，降级处理 |
+| `src/domain/pet.ts` | 修改 | `CompanionPet` 新增 `modelPath` 字段 |
+| `src/hooks/useFocusTimer.ts` | 修改 | status 变化时调用 `syncTimerState` |
 | `vite.config.ts` | 修改 | 新增 overlay 构建入口 |
+| `package.json` | 修改 | 新增 `three`、`@react-three/fiber`、`@react-three/drei` 依赖 |
 
 ---
 
 ## 六、不在本次范围内
 
-- 宠物照片的 AI 风格化（卡通化）处理
-- 悬浮窗口的位置持久化（下一迭代）
-- 环境变量管理 UI（用户在 `.env` 文件中手动配置 `REMOVE_BG_API_KEY`）
+- 宠物模型的骨骼绑定与关键帧动画（程序化动画作为替代）
+- 悬浮窗口位置持久化
+- 3D 模型交互旋转（`OrbitControls` 预留，后续开启）
+- 环境变量管理 UI（用户手动配置 `.env` 中的 `MESHY_API_KEY`）

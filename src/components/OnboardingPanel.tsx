@@ -57,24 +57,46 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
   if (stage === "generating") {
     return (
       <div className="panel onboarding-panel">
-        <p className="eyebrow">正在生成 3D 宠物模型</p>
-        <h2>稍等一下...</h2>
-        <p className="muted">通常需要 30 秒到 2 分钟</p>
-        <div style={{ margin: "16px 0", background: "#eee", borderRadius: 8, height: 8 }}>
-          <div style={{ width: `${progress}%`, background: "#4ecca3", height: "100%", borderRadius: 8, transition: "width 0.3s" }} />
+        <div className="brand-row">
+          <div className="brand-icon">✨</div>
+          <div className="brand-text">
+            <p className="eyebrow">正在生成</p>
+            <h2>为{name}创建卡通形象</h2>
+            <p>即梦 AI 正在处理，通常需要 20–60 秒</p>
+          </div>
         </div>
-        <p className="muted">{progress}%</p>
+        <div className="onboarding-divider" />
+        <div className="generating">
+          <div className="gen-icon">✨</div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "18px", fontWeight: "800", color: "#2D1470" }}>正在生成卡通形象...</div>
+            <div className="muted" style={{ marginTop: "4px" }}>即梦 AI 正在为{name}绘制专属形象</div>
+          </div>
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "11px", color: "#A78BFA" }}>风格转换中</span>
+              <span className="progress-label">{progress}%</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <form className="panel onboarding-panel" onSubmit={handleSubmit}>
-      <div>
-        <p className="eyebrow">第一步</p>
-        <h2>创建你的陪伴宠物</h2>
-        <p className="muted">上传宠物照片，AI 会生成专属 3D 模型。</p>
+      <div className="brand-row">
+        <div className="brand-icon">🐾</div>
+        <div className="brand-text">
+          <p className="eyebrow">第一步</p>
+          <h2>创建你的陪伴宠物</h2>
+          <p>上传照片，AI 生成专属卡通形象</p>
+        </div>
       </div>
+      <div className="onboarding-divider" />
 
       <label className="field" htmlFor="pet-name">
         <span>宠物名字</span>
@@ -91,14 +113,18 @@ export function OnboardingPanel({ onCreate }: OnboardingPanelProps) {
         {photoDataUrl ? (
           <img src={photoDataUrl} alt="宠物预览" />
         ) : (
-          <span><Camera size={22} />上传宠物照片</span>
+          <>
+            <div className="upload-icon">📷</div>
+            <strong>点击上传照片</strong>
+            <span>支持 JPG / PNG · 建议清晰正面照</span>
+          </>
         )}
       </label>
 
       {error && <p className="form-error">{error}</p>}
 
-      <button className="primary-button" type="submit">
-        生成陪伴宠物
+      <button className="primary-button full-width" type="submit">
+        ✨ 生成陪伴宠物
       </button>
     </form>
   );

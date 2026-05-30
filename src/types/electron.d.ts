@@ -5,6 +5,7 @@ declare global {
       onTimerStateChange: (cb: (status: string) => void) => () => void;
       movePetWindow: (x: number, y: number) => void;
       syncTimerState: (status: string) => void;
+      showPetOverlay: (modelPath?: string) => void;
     };
   }
 }

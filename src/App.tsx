@@ -22,7 +22,7 @@ export default function App() {
 
   useEffect(() => {
     if (companion && (window as any).electronAPI?.showPetOverlay) {
-      (window as any).electronAPI.showPetOverlay();
+      (window as any).electronAPI.showPetOverlay(companion.modelPath);
     }
   }, [companion]);
 

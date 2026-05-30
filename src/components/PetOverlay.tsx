@@ -13,6 +13,8 @@ function statusToMood(status: string): CompanionMood {
 
 export function PetOverlay() {
   const companion = readJson<CompanionPet | null>("pet-companion", null);
+  const urlModelPath = new URLSearchParams(window.location.search).get("modelPath") || undefined;
+  const modelPath = companion?.modelPath ?? urlModelPath;
   const [mood, setMood] = useState<CompanionMood>("idle");
   const dragStart = useRef<{ x: number; y: number; wx: number; wy: number } | null>(null);
 
@@ -46,7 +48,7 @@ export function PetOverlay() {
     };
   }, []);
 
-  if (!companion?.modelPath) return null;
+  if (!modelPath) return null;
 
   return (
     <div
@@ -57,7 +59,7 @@ export function PetOverlay() {
         <ambientLight intensity={0.8} />
         <directionalLight position={[5, 5, 5]} intensity={1} />
         <PetModel
-          modelPath={companion.modelPath}
+          modelPath={modelPath}
           mood={mood}
           onClick={() => {}}
         />

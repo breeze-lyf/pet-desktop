@@ -129,7 +129,7 @@ function registerIpcHandlers() {
     if (win) win.setPosition(Math.round(x), Math.round(y));
   });
 
-  ipcMain.on("show-pet-overlay", () => {
+  ipcMain.on("show-pet-overlay", (event, modelPath) => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.show();
       return;
@@ -153,10 +153,13 @@ function registerIpcHandlers() {
       }
     });
 
+    const encodedPath = modelPath ? `?modelPath=${encodeURIComponent(modelPath)}` : "";
     if (process.env.VITE_DEV_SERVER_URL) {
-      overlayWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}overlay.html`);
+      overlayWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}overlay.html${encodedPath}`);
     } else {
-      overlayWindow.loadFile(path.join(__dirname, "../dist/overlay.html"));
+      overlayWindow.loadFile(path.join(__dirname, "../dist/overlay.html"), {
+        query: modelPath ? { modelPath } : undefined
+      });
     }
 
     overlayWindow.on("closed", () => { overlayWindow = null; });

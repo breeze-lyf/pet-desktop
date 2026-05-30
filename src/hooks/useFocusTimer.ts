@@ -8,6 +8,16 @@ export function formatRemainingTime(seconds: number) {
   return `${minutes}:${restSeconds}`;
 }
 
+declare global {
+  interface Window {
+    electronAPI?: { syncTimerState: (status: string) => void };
+  }
+}
+
+function syncStatus(status: FocusTimerStatus) {
+  window.electronAPI?.syncTimerState(status);
+}
+
 export function useFocusTimer(minutes: number) {
   const totalSeconds = useMemo(() => minutes * 60, [minutes]);
   const [remainingSeconds, setRemainingSeconds] = useState(totalSeconds);
@@ -20,36 +30,35 @@ export function useFocusTimer(minutes: number) {
 
   useEffect(() => {
     if (status !== "running") return;
-
     const id = window.setInterval(() => {
       setRemainingSeconds((current) => {
         if (current <= 1) {
           window.clearInterval(id);
-          setStatus("reminding");
+          const next: FocusTimerStatus = "reminding";
+          setStatus(next);
+          syncStatus(next);
           return 0;
         }
         return current - 1;
       });
     }, 1000);
-
     return () => window.clearInterval(id);
   }, [status]);
+
+  function updateStatus(next: FocusTimerStatus) {
+    setStatus(next);
+    syncStatus(next);
+  }
 
   return {
     remainingSeconds,
     status,
     formattedRemaining: formatRemainingTime(remainingSeconds),
-    start: () => setStatus("running"),
-    pause: () => setStatus("paused"),
-    reset: () => {
-      setRemainingSeconds(totalSeconds);
-      setStatus("idle");
-    },
-    beginRest: () => setStatus("resting"),
-    finishRest: () => {
-      setRemainingSeconds(totalSeconds);
-      setStatus("idle");
-    },
-    dismissReminder: () => setStatus("running")
+    start: () => updateStatus("running"),
+    pause: () => updateStatus("paused"),
+    reset: () => { setRemainingSeconds(totalSeconds); updateStatus("idle"); },
+    beginRest: () => updateStatus("resting"),
+    finishRest: () => { setRemainingSeconds(totalSeconds); updateStatus("idle"); },
+    dismissReminder: () => updateStatus("running")
   };
 }

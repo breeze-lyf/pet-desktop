@@ -19,4 +19,14 @@ describe("useFocusTimer", () => {
     expect(result.current.remainingSeconds).toBe(0);
     vi.useRealTimers();
   });
+
+  it("calls syncTimerState when status changes", () => {
+    const syncTimerState = vi.fn();
+    (window as any).electronAPI = { syncTimerState };
+    const { result } = renderHook(() => useFocusTimer(25));
+    act(() => result.current.start());
+    expect(syncTimerState).toHaveBeenCalledWith("running");
+    act(() => result.current.pause());
+    expect(syncTimerState).toHaveBeenCalledWith("paused");
+  });
 });

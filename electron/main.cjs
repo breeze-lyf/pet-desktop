@@ -19,7 +19,7 @@ function httpsPost(url, headers, body) {
     const urlObj = new URL(url);
     const req = https.request({
       hostname: urlObj.hostname,
-      path: urlObj.pathname,
+      path: urlObj.pathname + urlObj.search,
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) }
     }, (res) => {
@@ -39,11 +39,14 @@ async function generateMeshyModel(photoBase64) {
 
   const headers = { Authorization: `Bearer ${apiKey}` };
 
+  // Ensure image_url is a proper data URI
+  const imageUrl = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+
   // Submit task
   const submitRes = await httpsPost(
     "https://api.meshy.ai/v2/image-to-3d",
     headers,
-    { image_url: photoBase64, enable_pbr: false }
+    { image_url: imageUrl, enable_pbr: false }
   );
   const submitData = JSON.parse(submitRes.body.toString());
   if (!submitData.result) throw new Error(`Meshy submit failed: ${submitRes.body}`);
@@ -54,6 +57,7 @@ async function generateMeshyModel(photoBase64) {
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 3000));
     const pollRes = await httpsGet(`https://api.meshy.ai/v2/image-to-3d/${taskId}`, headers);
+    if (pollRes.status >= 400) throw new Error(`Meshy poll failed with status ${pollRes.status}`);
     const pollData = JSON.parse(pollRes.body.toString());
     if (pollData.status === "SUCCEEDED") {
       const glbUrl = pollData.model_urls?.glb;
@@ -61,8 +65,9 @@ async function generateMeshyModel(photoBase64) {
 
       // Download GLB
       const dlRes = await httpsGet(glbUrl, {});
+      if (dlRes.status >= 400) throw new Error(`GLB download failed with status ${dlRes.status}`);
       const dest = path.join(app.getPath("userData"), `pet-${taskId}.glb`);
-      fs.writeFileSync(dest, dlRes.body);
+      await fs.promises.writeFile(dest, dlRes.body);
       return dest;
     }
     if (pollData.status === "FAILED" || pollData.status === "EXPIRED") {
@@ -71,6 +76,8 @@ async function generateMeshyModel(photoBase64) {
   }
   throw new Error("Meshy generation timed out");
 }
+
+let overlayWindow = null;
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -104,8 +111,6 @@ function createWindow() {
   });
 }
 
-let overlayWindow = null;
-
 function registerIpcHandlers() {
   ipcMain.handle("generate-3d-model", async (_event, photoBase64) => {
     return generateMeshyModel(photoBase64);
@@ -113,7 +118,9 @@ function registerIpcHandlers() {
 
   ipcMain.on("timer-state-changed", (event, status) => {
     BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send("timer-state-update", status);
+      if (win.webContents !== event.sender) {
+        win.webContents.send("timer-state-update", status);
+      }
     });
   });
 

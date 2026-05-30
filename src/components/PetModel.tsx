@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import { Group } from "three";
@@ -17,7 +17,7 @@ export function PetModel({ modelPath, mood, onClick }: PetModelProps) {
   const [jumping, setJumping] = useState(false);
   const jumpRef = useRef(0);
 
-  const cloned = scene.clone();
+  const cloned = useMemo(() => scene.clone(), [scene]);
 
   useEffect(() => {
     if (jumping) {

@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { CompanionMood } from "../domain/pet";
 
 interface CompanionStageProps {
   petName: string;
   portraitDataUrl: string;
+  cartoonPath?: string;
   mood: CompanionMood;
 }
 
@@ -13,7 +15,15 @@ const moodText: Record<CompanionMood, string> = {
   resting: "等你休息回来"
 };
 
-export function CompanionStage({ petName, portraitDataUrl, mood }: CompanionStageProps) {
+export function CompanionStage({ petName, portraitDataUrl, cartoonPath, mood }: CompanionStageProps) {
+  const [cartoonDataUrl, setCartoonDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cartoonPath || !(window as any).electronAPI?.readFileAsBase64) return;
+    (window as any).electronAPI.readFileAsBase64(cartoonPath).then(setCartoonDataUrl).catch(() => {});
+  }, [cartoonPath]);
+
+  const imgSrc = cartoonDataUrl ?? portraitDataUrl;
   return (
     <section className={`companion-stage mood-${mood}`} aria-label="宠物陪伴区">
       <div className="companion-status">
@@ -21,7 +31,7 @@ export function CompanionStage({ petName, portraitDataUrl, mood }: CompanionStag
         <span>{moodText[mood]}</span>
       </div>
       <div className="pet-orbit">
-        <img className="pet-portrait" src={portraitDataUrl} alt={`${petName} 的陪伴头像`} />
+        <img className="pet-portrait" src={imgSrc} alt={`${petName} 的陪伴头像`} />
         <div className="pet-name-badge">
           <div className="dot-status" />
           <strong>{petName}</strong>

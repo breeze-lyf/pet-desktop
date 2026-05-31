@@ -40,6 +40,7 @@ export default function App() {
         <CompanionStage
           petName={companion.profile.name}
           portraitDataUrl={companion.portraitDataUrl}
+          cartoonPath={companion.cartoonPath}
           mood={mood}
         />
         <aside className="side-panel">

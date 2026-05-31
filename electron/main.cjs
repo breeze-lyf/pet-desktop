@@ -34,12 +34,11 @@ async function generateCartoonPortrait(photoBase64) {
     method: "POST",
     headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "doubao-seededit-3-0-i2i-250628",
-      prompt: "转换为可爱日系卡通贴纸风格，保留宠物脸部特征，背景简洁",
+      model: "doubao-seedream-5-0-260128",
+      prompt: `以下图片中的宠物，转换为可爱日系卡通贴纸风格，保留宠物脸部特征，白色简洁背景`,
       image: imageData,
       response_format: "url",
-      size: "adaptive",
-      guidance_scale: 6,
+      size: "2K",
       watermark: false,
     }),
   });
@@ -93,6 +92,11 @@ function createWindow() {
 }
 
 function registerIpcHandlers() {
+  ipcMain.handle("read-file-as-base64", async (_event, filePath) => {
+    const data = await fs.promises.readFile(filePath);
+    return `data:image/png;base64,${data.toString("base64")}`;
+  });
+
   ipcMain.handle("generate-3d-model", async (_event, photoBase64) => {
     try {
       const result = await generateCartoonPortrait(photoBase64);

@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   movePetWindow: (x, y) => ipcRenderer.send("move-pet-window", x, y),
   showPetOverlay: (cartoonPath) => ipcRenderer.send("show-pet-overlay", cartoonPath),
+  readFileAsBase64: (filePath) => ipcRenderer.invoke("read-file-as-base64", filePath),
   platform: process.platform
 });

@@ -1,4 +1,7 @@
-require("dotenv").config({ path: require("node:path").join(process.cwd(), ".env") });
+const dotenvResult = require("dotenv").config({ path: require("node:path").join(process.cwd(), ".env") });
+console.log("[env] dotenv path:", require("node:path").join(process.cwd(), ".env"));
+console.log("[env] ARK_API_KEY:", process.env.ARK_API_KEY ? process.env.ARK_API_KEY.slice(0, 12) + "..." : "NOT SET");
+if (dotenvResult.error) console.error("[env] dotenv error:", dotenvResult.error.message);
 const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("node:path");
 const https = require("node:https");
